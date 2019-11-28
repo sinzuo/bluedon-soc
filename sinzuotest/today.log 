@@ -1,0 +1,36 @@
+[INFO ][2019-11-27 05:51:18,994] : This is a test
+[ERROR][2019-11-27 05:51:18,994] : zheshi ok
+[INFO ][2019-11-27 06:32:10,174] : This is a test
+[ERROR][2019-11-27 06:32:10,174] : zheshi ok
+[INFO ][2019-11-27 06:32:10,174] : <=========netservice configure information=========>
+[INFO ][2019-11-27 06:32:10,174] :  log4configfile=>    [i love family]
+[INFO ][2019-11-27 06:34:31,751] : This is a test
+[ERROR][2019-11-27 06:34:31,751] : zheshi ok
+[INFO ][2019-11-27 06:34:31,751] : <=========netservice configure information=========>
+[INFO ][2019-11-27 06:34:31,751] :  log4configfile=>    [i love family]
+[INFO ][2019-11-27 06:34:58,000] : <=========netservice configure information=========>
+[INFO ][2019-11-27 06:34:58,000] :  log4configfile=>    [../conf/filelog_log4.properties]
+[INFO ][2019-11-27 06:34:58,000] :  moduleid=>          [10010002]
+[INFO ][2019-11-27 06:34:58,000] :  modulename=>        [FILELOG]
+[INFO ][2019-11-27 06:34:58,000] :  moduleversion=>     [1]
+[INFO ][2019-11-27 06:34:58,000] :  record_separator=>  [|]
+[INFO ][2019-11-27 06:34:58,000] :  field_separator=>   [~]
+[INFO ][2019-11-27 06:34:58,000] :  tasknum_perthread=> [1]
+[INFO ][2019-11-27 06:34:58,000] : <=========netservice configure information=========>
+[INFO ][2019-11-27 06:34:58,000] : This is a test
+[ERROR][2019-11-27 06:34:58,000] : zheshi ok
+[INFO ][2019-11-27 06:34:58,000] : <=========netservice configure information=========>
+[INFO ][2019-11-27 06:34:58,000] :  log4configfile=>    [i love family]
+[INFO ][2019-11-27 07:25:59,951] : <=========netservice configure information=========>
+[INFO ][2019-11-27 07:25:59,952] :  log4configfile=>    [../conf/filelog_log4.properties]
+[INFO ][2019-11-27 07:25:59,952] :  moduleid=>          [10010002]
+[INFO ][2019-11-27 07:25:59,952] :  modulename=>        [FILELOG]
+[INFO ][2019-11-27 07:25:59,952] :  moduleversion=>     [1]
+[INFO ][2019-11-27 07:25:59,952] :  record_separator=>  [|]
+[INFO ][2019-11-27 07:25:59,952] :  field_separator=>   [~]
+[INFO ][2019-11-27 07:25:59,952] :  tasknum_perthread=> [1]
+[INFO ][2019-11-27 07:25:59,952] : <=========netservice configure information=========>
+[INFO ][2019-11-27 07:25:59,953] : This is a test
+[ERROR][2019-11-27 07:25:59,953] : zheshi ok
+[INFO ][2019-11-27 07:25:59,953] : <=========netservice configure information=========>
+[INFO ][2019-11-27 07:25:59,953] :  log4configfile=>    [i love family]

@@ -1,0 +1,148 @@
+/**************************************************
+ * COPYRIGHT NOTICE
+ * Copyright (c) 2011,      BLUEDON
+ * All rights reserved.
+ * 
+ * @file    xxx.h
+ * @brief   xxx
+ * 
+ *
+ * @version 1.0 
+ * @author  xxx
+ * @date    2011年09月13日
+ *
+ * 修订说明：最初版本
+ **************************************************/
+
+#include "bd_ssh_proxy.h"
+//#include <errno.h>
+//#include <cstdio>
+//#include <cstdlib>
+#include <sstream>
+#include <string>
+using namespace std;
+
+#include "utils/bd_common.h"
+#include "common/bd_hostinfo.h"
+//#include "bd_host_ctl.h"
+#include "bd_ssh.h"
+
+
+bd_ssh_proxy::bd_ssh_proxy( bd_hostact_detail* hostactdetail, bd_host* hostinfo, const string& execarg ) : 
+m_hostactdetial(hostactdetail), m_hostinfo(hostinfo), m_execarg(execarg)
+{
+}
+
+bd_ssh_proxy::~bd_ssh_proxy()
+{
+    delete m_ssh;
+}
+
+int bd_ssh_proxy::execute( string &result )
+{
+    if ( m_hostinfo->ipv4.empty() )
+    {
+        return -1;
+    }
+
+    if ( 0 != _login() )
+    {
+        return -1;
+    }
+
+    int ret = -1;
+    /*if ( 0 == m_hostactdetial->actName.compare("upload") )
+    {
+        BD_LOGTRC("upload");
+        ret = _upload( result );
+    }
+    else*/ if ( 0 == m_hostactdetial->actName.compare("SynTime") )
+    {
+        m_execarg = m_hostactdetial->sshCmd + " " + m_execarg;
+        ret = _command( result );
+    }
+    else if ( 0 == m_hostactdetial->actName.compare("RestartHost") )
+    {
+        m_execarg = m_hostactdetial->sshCmd;
+        ret = _command( result );
+    }
+    else if ( 0 == m_hostactdetial->actName.compare("ShutdownHost") )
+    {
+        m_execarg = m_hostactdetial->sshCmd;
+        ret = _command( result );
+    }
+    else
+    {
+        ret = -1;
+    }
+    return ret;
+}
+
+
+int bd_ssh_proxy::executecmd( string &result )
+{
+	if ( m_hostinfo->ipv4.empty() )
+	{
+		return -1;
+	}
+
+	if ( 0 != _login() )
+	{
+		return -1;
+	}
+
+	int ret = -1;
+
+	m_execarg = m_hostactdetial->sshCmd;
+	ret = _command( result );
+
+	return ret;
+}
+
+
+int bd_ssh_proxy::_login()
+{
+    try
+    {
+        m_ssh = new netprotocol::bd_ssh;
+        std::string sshPath = "ssh://" + m_hostinfo->ipv4;
+        m_ssh->login( sshPath, m_hostinfo->username, m_hostinfo->password );
+    }
+    catch(...)
+    {
+        return -1;
+    }
+    
+    return 0;
+}
+
+int bd_ssh_proxy::_command( string &result )
+{
+    if ( m_execarg.empty() )
+    {
+        return -1;
+    }
+
+    if ( m_execarg.empty() )
+    {
+        return -1;
+    }
+
+    try
+    {
+        result = m_ssh->command( m_execarg );
+    }
+    catch ( const bd_net_exception& e )
+    {
+        stringstream ss;
+        ss << "execute " << m_execarg << " fail. " << e.what();
+        return -1;
+    }
+    catch (...)
+    {
+        return -1;
+    }
+
+    return 0;
+}
+

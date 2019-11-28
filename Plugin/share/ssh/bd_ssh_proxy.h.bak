@@ -1,0 +1,67 @@
+/**************************************************
+ * COPYRIGHT NOTICE
+ * Copyright (c) 2011,      BLUEDON
+ * All rights reserved.
+ * 
+ * @file    xxx.h
+ * @brief   xxx
+ * 
+ *
+ * @version 1.0 
+ * @author  xxx
+ * @date    2011年09月13日
+ *
+ * 修订说明：最初版本
+ **************************************************/
+
+#ifndef __BD_SSH_PROXY_H__
+#define __BD_SSH_PROXY_H__
+
+#ifdef WIN32
+#   pragma warning(disable:4996)
+#   pragma warning (disable:4290) //忽略 C++ 异常规范，但指示函数不是 __declspec(nothrow).
+#   ifdef BD_SSH_EXPORTS
+#       define BD_SSHEXE_EXPORTS __declspec(dllexport)
+#   else
+#       define BD_SSHEXE_EXPORTS __declspec(dllimport)
+#   endif // BD_SSH_EXPORTS
+#else
+#   define BD_SSHEXE_EXPORTS
+#endif // WIN32
+
+#include <string>
+using namespace std;
+#include "common/bd_hostinfo.h"
+//#include "common/bd_host_ctl.h"
+#include "bd_ssh.h"
+
+class BD_SSHEXE_EXPORTS bd_ssh_proxy
+{
+public:
+    bd_ssh_proxy( bd_hostact_detail* hostactdetail, bd_host* hostinfo, const string& execarg );
+    ~bd_ssh_proxy();
+
+	// 执行命令
+	int execute( string &result );
+	int executecmd( string &result );
+
+private:
+    int _login();
+
+    // 上传文件到远程主机
+    //int _upload( string* result );
+
+    // 下载远程主机的文件到本机
+    //int _download( string* result );
+
+    // 
+    int _command( string &result );
+
+private:
+    bd_hostact_detail* m_hostactdetial;
+    bd_host* m_hostinfo;
+    string m_execarg;
+    netprotocol::bd_ssh* m_ssh;
+};
+
+#endif /* __BD_SSH_PROXY_H__ */

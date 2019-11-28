@@ -1,0 +1,612 @@
+
+#include "bd_topu_task.h"
+#include "Poco/Types.h"
+#include "Poco/DOM/DOMParser.h"
+#include "Poco/DOM/NodeList.h"
+#include "Poco/DOM/Document.h"
+#include "Poco/DOM/NodeIterator.h"
+#include "Poco/DOM/NodeFilter.h"
+#include "Poco/DOM/Node.h"
+#include "Poco/DOM/NamedNodeMap.h"
+#include "Poco/DOM/AutoPtr.h"
+#include "Poco/XML/XMLException.h"
+#include <iostream>
+
+using namespace Poco;
+bool CTopu:: get_info_from_L3(HOSTINFO &hostinfo)
+{
+
+    SNMPOID ifrouteroid(".1.3.6.1.2.1.4.1.0");   //用来判断设备是否具有路由转发功能
+    SNMPOID bridgeaddressoid(".1.3.6.1.2.1.17.1.1.0");   //设备有没有实现bridge-mib，判断是不是交换机
+    SNMPOID hostoid(".1.3.6.1.2.1.25.1.1.0");   //设备有没有实现host-mib，判断是不是主机
+
+    SNMPOID sysdescoid(".1.3.6.1.2.1.1.1.0"); //系统描述 可以用作判断是操作系统
+    SNMPOID sysuptimeoid(".1.3.6.1.2.1.1.3.0"); // 系统启动时间
+    SNMPOID syscontactoid(".1.3.6.1.2.1.1.4.0"); // 联系方式
+    SNMPOID sysnameoid(".1.3.6.1.2.1.1.5.0");   // 系统名字
+    SNMPOID syslocationoid(".1.3.6.1.2.1.1.6.0"); // 所在地
+    SNMPOID iftableoid(".1.3.6.1.2.1.2.2.1");    //网口信息
+    SNMPVALUE sysvalue; //临时变量
+    SNMPTABLE valuetable; //临时表变量
+
+
+
+    //
+    //*需要添加通过ping 判断设备是否连通
+    //*用于判断ICMP是否开启
+    int timecost = 0;
+    string l3ip =  this->m_vecProtoParam[0];
+    bool bConnect = this->getPingState(l3ip.c_str(), 30000, &timecost);
+    if (bConnect == 0 )
+    {
+        hostinfo.ICMP_ENABLE = 0;  //ICMP没有开启
+        return true;
+    }
+    else
+    {
+        hostinfo.ICMP_ENABLE = 1;  //ICMP开启
+    }
+
+
+    //CNetSnmp snmp(hostinfo.sysip.c_str(), community, user, protol, passwd, lVersion);
+    //1.是否具有路由转发功能,不能获取则判断为snmp没有开启
+    if (snmp.Get(ifrouteroid, &sysvalue) != 0)
+    {
+        printf("Failed to get ifrouteroid info from [%s] via SNMP\n",l3ip.c_str());
+        hostinfo.SNMP_ENABLE = 0;  //snmp没有开启
+        hostinfo.Dev_Type = 0;   //未知类型
+        hostinfo.ifrouter = 0;
+        return true;
+    }
+    else
+    {
+        hostinfo.SNMP_ENABLE = 1;  //snmp开启
+        if (!strcmp(sysvalue.GetValueToString().c_str(),"1"))
+        {
+            hostinfo.ifrouter = 1;
+            hostinfo.Dev_Type = 1;   //有路由转发功能，则为路由器或三层交换机
+
+        }
+        else
+        {
+            hostinfo.ifrouter = 0;
+            hostinfo.Dev_Type = 3;   //没有路由转发功能，则为普通交换机或普通主机, 预设为3
+        }
+    }
+
+    memset(&sysvalue, 0, sizeof(sysvalue)); //清空
+    //2.判断设备有没有实现bridge-mib
+    if (snmp.Get(bridgeaddressoid, &sysvalue) != 0)
+    {
+        printf("Failed to get bridgeaddressoid info from [%s] via SNMP\n",l3ip.c_str());
+    }
+    else
+    {
+            hostinfo.Dev_Type = 2;  //设备类型为交换机
+    }
+
+    memset(&sysvalue, 0, sizeof(sysvalue)); //清空
+    //3.判断设备有没有实现host-mib
+    if (snmp.Get(hostoid, &sysvalue) != 0)
+    {
+        printf("Failed to get hostoid info from [%s] via SNMP\n",l3ip.c_str());
+
+        if ( hostinfo.Dev_Type == 3 )
+            hostinfo.Dev_Type = 0;  //没有实现host-mib,则为未知设备类型
+
+    }
+    else
+    {
+            hostinfo.Dev_Type = 3;
+    }
+
+    memset(&sysvalue, 0, sizeof(sysvalue)); //清空
+    //4.获取主机信息
+    if (snmp.Get(sysdescoid, &sysvalue) != 0)
+    {
+        printf("Failed to get sysdescoid info from [%s] via SNMP",l3ip.c_str());
+        return true;
+    }
+    else
+    {
+        hostinfo.sysdescvalue = sysvalue.GetValueToString();
+        //从系统描述中获取操作系统
+        if ( hostinfo.sysdescvalue.find("Linux") != string::npos  )
+        {
+            hostinfo.sysop = 1;
+        }
+        else if ( hostinfo.sysdescvalue.find("Windows") != string::npos  )
+        {
+            hostinfo.sysop = 2;
+        }
+        else if ( hostinfo.sysdescvalue.find("OS X") != string::npos  )
+        {
+            hostinfo.sysop = 3;
+        }
+        else
+        {
+            hostinfo.sysop = 0;
+        }
+    }
+
+    memset(&sysvalue, 0, sizeof(sysvalue)); //清空
+
+    if (snmp.Get(sysuptimeoid, &sysvalue) != 0)
+    {
+        printf("Failed to get sysuptimeoid info from [%s] via SNMP",l3ip.c_str());
+        hostinfo.sysuptimevalue = "";
+    }
+    else
+    {
+        hostinfo.sysuptimevalue = sysvalue.GetValueToString();
+    }
+
+    memset(&sysvalue, 0, sizeof(sysvalue)); //清空
+
+    if (snmp.Get(syscontactoid, &sysvalue) != 0)
+    {
+        printf("Failed to get syscontactoid info from [%s] via SNMP",l3ip.c_str());
+        hostinfo.syscontactvalue = "";
+    }
+    else
+    {
+        hostinfo.syscontactvalue = sysvalue.GetValueToString();
+    }
+
+    memset(&sysvalue, 0, sizeof(sysvalue)); //清空
+
+    if (snmp.Get(sysnameoid, &sysvalue) != 0)
+    {
+        printf("Failed to get sysnameoid info from [%s] via SNMP",l3ip.c_str());
+        hostinfo.sysname = "";
+    }
+    else
+    {
+        hostinfo.sysname = sysvalue.GetValueToString();
+    }
+    memset(&sysvalue, 0, sizeof(sysvalue)); //清空
+
+    if (snmp.Get(syslocationoid, &sysvalue) != 0)
+    {
+        printf("Failed to get syslocationoid info from [%s] via SNMP",l3ip.c_str());
+        hostinfo.syslocationvalue = "";
+    }
+    else
+    {
+        hostinfo.syslocationvalue = sysvalue.GetValueToString();
+    }
+    return true;
+}
+
+bool CTopu:: get_info_from_host(HOSTINFO &hostinfo, const char *community, const char *user, const char *protol, const char *passwd, const long  lVersion)
+{
+
+    SNMPOID ifrouteroid(".1.3.6.1.2.1.4.1.0");   //用来判断设备是否具有路由转发功能
+    SNMPOID bridgeaddressoid(".1.3.6.1.2.1.17.1.1.0");   //设备有没有实现bridge-mib，判断是不是交换机
+    SNMPOID hostoid(".1.3.6.1.2.1.25.1.1.0");   //设备有没有实现host-mib，判断是不是主机
+
+    SNMPOID sysdescoid(".1.3.6.1.2.1.1.1.0"); //系统描述 可以用作判断是操作系统
+    SNMPOID sysuptimeoid(".1.3.6.1.2.1.1.3.0"); // 系统启动时间
+    SNMPOID syscontactoid(".1.3.6.1.2.1.1.4.0"); // 联系方式
+    SNMPOID sysnameoid(".1.3.6.1.2.1.1.5.0");   // 系统名字
+    SNMPOID syslocationoid(".1.3.6.1.2.1.1.6.0"); // 所在地
+    SNMPOID iftableoid(".1.3.6.1.2.1.2.2.1");    //网口信息
+    SNMPVALUE sysvalue; //临时变量
+    SNMPTABLE valuetable; //临时表变量
+
+
+
+    //
+    //*需要添加通过ping 判断设备是否连通
+    //*用于判断ICMP是否开启
+    int timecost = 0;
+    bool bConnect = this->getPingState(hostinfo.sysip.c_str(), 30000, &timecost);
+    if (bConnect == 0 )
+    {
+        hostinfo.ICMP_ENABLE = 0;  //ICMP没有开启
+        return true;
+    }
+    else
+    {
+        hostinfo.ICMP_ENABLE = 1;  //ICMP开启
+    }
+
+
+    CNetSnmp snmp(hostinfo.sysip.c_str(), community, user, protol, passwd, lVersion);
+    //1.是否具有路由转发功能,不能获取则判断为snmp没有开启
+    if (snmp.Get(ifrouteroid, &sysvalue) != 0)
+    {
+        printf("Failed to get ifrouteroid info from [%s] via SNMP\n",hostinfo.sysip.c_str());
+        hostinfo.SNMP_ENABLE = 0;  //snmp没有开启
+        hostinfo.Dev_Type = 0;   //未知类型
+        hostinfo.ifrouter = 0;
+        return true;
+    }
+    else
+    {
+        hostinfo.SNMP_ENABLE = 1;  //snmp开启
+        if (!strcmp(sysvalue.GetValueToString().c_str(),"1"))
+        {
+            hostinfo.ifrouter = 1;
+            hostinfo.Dev_Type = 1;   //有路由转发功能，则为路由器或三层交换机
+
+        }
+        else
+        {
+            hostinfo.ifrouter = 0;
+            hostinfo.Dev_Type = 3;   //没有路由转发功能，则为普通交换机或普通主机, 预设为3
+        }
+    }
+
+    memset(&sysvalue, 0, sizeof(sysvalue)); //清空
+    //2.判断设备有没有实现bridge-mib
+    if (snmp.Get(bridgeaddressoid, &sysvalue) != 0)
+    {
+        printf("Failed to get bridgeaddressoid info from [%s] via SNMP\n",hostinfo.sysip.c_str());
+    }
+    else
+    {
+            hostinfo.Dev_Type = 2;  //设备类型为交换机
+    }
+
+    memset(&sysvalue, 0, sizeof(sysvalue)); //清空
+    //3.判断设备有没有实现host-mib
+    if (snmp.Get(hostoid, &sysvalue) != 0)
+    {
+        printf("Failed to get hostoid info from [%s] via SNMP\n",hostinfo.sysip.c_str());
+
+        if ( hostinfo.Dev_Type == 3 )
+            hostinfo.Dev_Type = 0;  //没有实现host-mib,则为未知设备类型
+
+    }
+    else
+    {
+            hostinfo.Dev_Type = 3;
+    }
+
+    memset(&sysvalue, 0, sizeof(sysvalue)); //清空
+    //4.获取主机信息
+    if (snmp.Get(sysdescoid, &sysvalue) != 0)
+    {
+        printf("Failed to get sysdescoid info from [%s] via SNMP",hostinfo.sysip.c_str());
+        return true;
+    }
+    else
+    {
+        hostinfo.sysdescvalue = sysvalue.GetValueToString();
+        //从系统描述中获取操作系统
+        if ( hostinfo.sysdescvalue.find("Linux") != string::npos  )
+        {
+            hostinfo.sysop = 1;
+        }
+        else if ( hostinfo.sysdescvalue.find("Windows") != string::npos  )
+        {
+            hostinfo.sysop = 2;
+        }
+        else if ( hostinfo.sysdescvalue.find("OS X") != string::npos  )
+        {
+            hostinfo.sysop = 3;
+        }
+        else
+        {
+            hostinfo.sysop = 0;
+        }
+    }
+
+    memset(&sysvalue, 0, sizeof(sysvalue)); //清空
+
+    if (snmp.Get(sysuptimeoid, &sysvalue) != 0)
+    {
+        printf("Failed to get sysuptimeoid info from [%s] via SNMP",hostinfo.sysip.c_str());
+        hostinfo.sysuptimevalue = "";
+    }
+    else
+    {
+        hostinfo.sysuptimevalue = sysvalue.GetValueToString();
+    }
+
+    memset(&sysvalue, 0, sizeof(sysvalue)); //清空
+
+    if (snmp.Get(syscontactoid, &sysvalue) != 0)
+    {
+        printf("Failed to get syscontactoid info from [%s] via SNMP",hostinfo.sysip.c_str());
+        hostinfo.syscontactvalue = "";
+    }
+    else
+    {
+        hostinfo.syscontactvalue = sysvalue.GetValueToString();
+    }
+
+    memset(&sysvalue, 0, sizeof(sysvalue)); //清空
+
+    if (snmp.Get(sysnameoid, &sysvalue) != 0)
+    {
+        printf("Failed to get sysnameoid info from [%s] via SNMP",hostinfo.sysip.c_str());
+        hostinfo.sysname = "";
+    }
+    else
+    {
+        hostinfo.sysname = sysvalue.GetValueToString();
+    }
+    memset(&sysvalue, 0, sizeof(sysvalue)); //清空
+
+    if (snmp.Get(syslocationoid, &sysvalue) != 0)
+    {
+        printf("Failed to get syslocationoid info from [%s] via SNMP",hostinfo.sysip.c_str());
+        hostinfo.syslocationvalue = "";
+    }
+    else
+    {
+        hostinfo.syslocationvalue = sysvalue.GetValueToString();
+    }
+    return true;
+}
+
+bool CTopu:: get_info_from_ipRouteTable(const string& routerip, map<string, bd_ulonglong>* host)
+{
+
+    if (routerip.empty() || NULL == host)
+    {
+        printf("ip is empty or hostlist is NULL");
+        return false;
+    }
+
+    CNetSnmp snmp(routerip.c_str(), "public", "", "", "", NETSNMP_VERSION_2c);
+    SNMPOID ipRouteTable(".1.3.6.1.2.1.4.21.1");
+    SNMPTABLE valuetable;
+    if (snmp.GetTable(ipRouteTable, &valuetable) != 0)
+    {
+        printf("Failed to get host info from [%s] via SNMP", routerip.c_str());
+        return false;
+    }
+    //printf("count [%d]", valuetable.count);
+    for(int i = 1; i <= valuetable.count; i++ )
+    {
+        SNMPTABLEROW *row = valuetable[i];
+        LPSNMPTABLECOLUMN node;
+        LPSNMPTABLECOLUMN netaddr;
+        LPSNMPTABLECOLUMN ipRouteType;
+
+        if ((*row)[1])
+            netaddr = (*row)[1];
+        else
+            continue;
+
+        if ((*row)[2])
+            node = (*row)[2];
+        else
+            continue;
+
+        if ((*row)[8])
+            ipRouteType = (*row)[8];
+        else
+            continue;
+
+        long long RouteType = ipRouteType->column_value.nInterValue;
+        long long nodeid = node->column_value.nInterValue;
+        string ipaddr = netaddr->column_value.GetValueToString();
+
+        //RouteType == 3 的为直连子网
+        if (ipaddr.empty() || RouteType != 3) {
+            continue;
+        }
+        host->insert(make_pair(ipaddr, nodeid));
+        row->Free();
+    }
+    valuetable.Free();
+    return true;
+}
+
+bool CTopu:: get_L3_info_from_ipRouteTable(list<L3_TOPO_INFO> &l3_info_list, list<string> &L3routelist)
+{
+
+    list<string> routelist;//待查找的路由
+    list<string> search_routelist;//记录已经寻找过的路由
+
+    string l3_ip = this->m_vecProtoParam[0].c_str();
+    routelist.push_back(l3_ip);
+    search_routelist.push_back(l3_ip);
+
+    SNMPOID ipRouteTable(".1.3.6.1.2.1.4.21.1");
+
+    while (!routelist.empty())
+    {
+        SNMPTABLE valuetable;
+        string CurrentRouterip = routelist.front();
+        routelist.pop_front();
+
+        if(CurrentRouterip == l3_ip)
+        {
+            if (snmp.GetTable(ipRouteTable, &valuetable) != 0)
+            {
+                printf("Failed to get l3 RouteTable from [%s] via SNMP\n", CurrentRouterip.c_str());
+                valuetable.Free();
+                return false;
+            }
+        }
+        else
+        {
+            CNetSnmp snmp(CurrentRouterip.c_str(), "public", "", "", "", NETSNMP_VERSION_2c);
+            if (snmp.GetTable(ipRouteTable, &valuetable) != 0)
+            {
+                printf("Failed to get RouteTable info from [%s] via SNMP\n", CurrentRouterip.c_str());
+                valuetable.Free();
+                continue;
+            }
+        }
+        L3routelist.push_back(CurrentRouterip); //记录能访问的路由，用于获取子网设备
+        printf("#######################%s#####\n",CurrentRouterip.c_str());
+        for(int i = 1; i <= valuetable.count; i++ )
+        {
+            SNMPTABLEROW *row = valuetable[i];
+            LPSNMPTABLECOLUMN node;
+            LPSNMPTABLECOLUMN netaddr;
+            LPSNMPTABLECOLUMN ipRouteType;
+            LPSNMPTABLECOLUMN netMask;
+            LPSNMPTABLECOLUMN nextHop;
+
+            if ((*row)[1])
+                netaddr = (*row)[1];
+            else
+                continue;
+            if ((*row)[2])
+                node = (*row)[2];
+            else
+                continue;
+            if ((*row)[7])
+                nextHop = (*row)[7];
+            else
+                continue;
+            if ((*row)[8])
+                ipRouteType = (*row)[8];
+            else
+                continue;
+            if ((*row)[11])
+                netMask = (*row)[11];
+            else
+                continue;
+
+            long long nodeid = node->column_value.nInterValue;
+            long long RouteType = ipRouteType->column_value.nInterValue;
+            string ipaddr = netaddr->column_value.GetValueToString();
+            string ipmask = netMask->column_value.GetValueToString();
+            string ipnexthop = nextHop->column_value.GetValueToString();
+            L3_TOPO_INFO l3_info_temp;
+
+            //RouteType == 3 的为直连子网
+            if (RouteType == 3)
+            {
+                if(ipmask == "255.255.255.255")
+                {
+                    list<string>::iterator stringIter = find(search_routelist.begin(), search_routelist.end(), ipnexthop);
+                    if(stringIter != search_routelist.end())
+                            continue;
+                    routelist.push_back(ipnexthop);
+                    search_routelist.push_back(ipnexthop);
+                    l3_info_temp.Src_IP = CurrentRouterip;
+                    l3_info_temp.Dst_IP = ipnexthop;
+                    l3_info_temp.Node = nodeid;
+                    //l3_info_temp.Mask = ipmask;
+
+                }
+                else
+                {
+                    l3_info_temp.Src_IP = CurrentRouterip;
+                    l3_info_temp.Dst_IP = ipaddr;
+                    l3_info_temp.Node = nodeid;
+                    l3_info_temp.Mask = ipmask;
+
+                }
+            }
+            else if (RouteType == 4)
+            {
+                if ( ipmask == "0.0.0.0" )
+                    continue;
+                list<string>::iterator stringIter = find(search_routelist.begin(), search_routelist.end(), ipnexthop);
+                if(stringIter != search_routelist.end())
+                    continue;
+                routelist.push_back(ipnexthop);
+                search_routelist.push_back(ipnexthop);
+                l3_info_temp.Src_IP = CurrentRouterip;
+                l3_info_temp.Dst_IP = ipnexthop;
+                l3_info_temp.Node = nodeid;
+                //l3_info_temp.Mask = ipmask;
+            }
+
+            l3_info_list.push_back(l3_info_temp);
+            row->Free();
+        }
+        valuetable.Free();
+
+    }
+
+    return true;
+}
+
+
+bool CTopu::getPingState(const string &strIP, int ntimeout, int *timecost) {
+	bd_ping bdPing;
+	bool bConnect = bdPing.ping(strIP, ntimeout, timecost);
+    return bConnect;
+}
+
+
+bool CTopu::get_L2info_from_ipNetToMediaTable(const string& routerip, list<L3_TOPO_INFO> &l3_topuinfo_list, list<L2_TOPO_INFO> &l2_topuinfo_list)
+{
+   // printf(bd_netdetect_topology, _get_port_to_host_from_ipNetToMediaTable);
+    if (routerip.empty())
+    {
+        printf("ip is empty or hostlist is NULL");
+        return false;
+    }
+
+    CNetSnmp snmp(routerip.c_str(), "public", "", "", "", NETSNMP_VERSION_2c);
+    SNMPOID ipNetToMediaTable(".1.3.6.1.2.1.4.22.1");
+    SNMPTABLE valuetable;
+    if (snmp.GetTable(ipNetToMediaTable, &valuetable) != 0)
+    {
+        printf("Failed to get host info from [%s] via SNMP", routerip.c_str());
+        return false;
+    }
+
+    for(int i = 1; i <= valuetable.count; i++ )
+    {
+        SNMPTABLEROW *row = valuetable[i];
+        LPSNMPTABLECOLUMN physport;
+        LPSNMPTABLECOLUMN netaddr;
+        LPSNMPTABLECOLUMN netmac;
+
+        if ((*row)[1])
+            physport = (*row)[1];
+        else
+            continue;
+        if ((*row)[2])
+            netmac = (*row)[2];
+        else
+            continue;
+        if ((*row)[3])
+            netaddr = (*row)[3];
+        else
+            continue;
+        //printf("port:%llu\n",physport->column_value.nInterValue);
+        bd_ulonglong port = physport->column_value.nInterValue;
+        string ip = netaddr->column_value.GetValueToString();
+        string mac = netmac->column_value.GetValueToString();
+
+        //physport == 0 的为不活动记录
+        if (ip.empty() || port == 0) {
+            continue;
+        }
+
+
+        L2_TOPO_INFO l2_topuinfo;
+        l2_topuinfo.Sub_Node_ID = i;
+        l2_topuinfo.Sub_Node_IP = ip;
+        l2_topuinfo.Parent_Node_IF_Index = port;
+        l2_topuinfo.Sub_Node_IF_MAC = mac;
+
+        for (list<L3_TOPO_INFO>::iterator it = l3_topuinfo_list.begin(); it != l3_topuinfo_list.end(); ++it)
+        {
+            if (it->Node == l2_topuinfo.Parent_Node_IF_Index)
+            {
+                l2_topuinfo.Parent_Node_ID = it->Src_ID;
+                l2_topuinfo.Parent_Node_IP = it->Dst_IP;
+
+            }
+
+        }
+        l2_topuinfo_list.push_back(l2_topuinfo);
+
+        row->Free();
+    }
+    valuetable.Free();
+    return true;
+}
+
+
+
+
+
+
+
+

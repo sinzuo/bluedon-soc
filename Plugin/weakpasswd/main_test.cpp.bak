@@ -1,0 +1,46 @@
+#include <iostream>
+#include <cstdlib>
+#include <string>
+
+#include "WeakpasswdMgr.h"
+
+using namespace std;
+
+bool Report_date(Poco::UInt32 dwModuleId, const PModIntfDataType pDataType, const void * pData, Poco::UInt32 dwLength)
+{
+    cout << "func Report_date begins..." << endl;
+	string report_data = *(string *)pData;
+    cout << "report_data: " << report_data << endl;
+
+    return true;
+}
+
+int main()
+{
+    CWeakpasswdMgr weakpasswd("/root/SOC/soc5.1/conf/weakpasswd.cfg");
+	cout << "func main begins..." << endl;
+	
+	bool ret = true;
+	
+    ret = weakpasswd.Init();
+	if(!ret)
+		cout << "Init failed..." << endl;
+	
+	string Policy = "172.16.12.17";  //~172.16.12.17
+    ret = weakpasswd.SetData(NULL, (void *)&Policy, Policy.size());
+	if(!ret)
+		cout << "SetData failed..." << endl;
+	
+	weakpasswd.SetFetchData(NULL);
+    weakpasswd.SetReportData(Report_date);
+	
+    ret = weakpasswd.Start();
+	if(!ret)
+		cout << "Start failed..." << endl;
+
+	sleep(120);
+	
+	cout << "func main end..." << endl;
+
+    return 0;
+}

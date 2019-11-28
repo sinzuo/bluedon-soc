@@ -1,0 +1,218 @@
+package bd_soc_protobuf;
+
+/**
+ * 消息包头
+ */
+message Message { 
+    /**
+     * 消息模式枚举
+     */
+    enum Mode {
+        REQUEST   = 0;  // 单请求模式
+        RESPONSE  = 1;  // 单响应模式
+        
+        REQUESTS  = 2;  // 多请求模式（消息内容为数组）
+        RESPONSES = 3;  // 多响应模式（消息内容为数组）
+    }
+
+    /**
+     * 消息服务号枚举
+     */
+    enum ServiceNo { 
+        /* 控制级别服务 */
+        REGISTER            = 100000;    // 主机注册
+        SESSION             = 100001;    // 会话通信（握手、心跳、插件状态上报）
+        START_PLUGIN        = 100002;    // 开启插件
+        STOP_PLUGIN         = 100003;    // 停止插件
+        START_AGENT         = 100004;    // 开启代理（加载所有插件）
+        STOP_AGENT          = 100005;    // 停止代理（卸载所有插件）
+        MONITOR_HOST        = 100006;    // 上报主机CPU内存使用率等
+        MANAGE_AGENT        = 100007;    // 管理传感器(心跳上报周期、性能监控周期等)
+	START_TASK          = 100008;
+        /* 数据级别服务 */
+        LOG                 = 200000;    // 日志数据
+        PERFORMANCE         = 200001;    // 性能(监控)数据
+        SERVICE             = 200002;    // 业务数据
+        FLOW                = 200003;    // flow数据
+        NETFLOW             = 200004;    // netflow数据
+        /* 系统级别服务 */
+        SYSTEM              = 999999;    // 系统服务（异常等）
+    }
+	/**
+     * 加密与压缩枚举
+     */
+    enum enptypeNo { 
+        /* 加密模式 */
+        NO_ENPTYPE          =  4000;    // 默认不加密
+        AES256ECB           =  4001;    // 加密模式
+        AES256CBC           =  4002;
+        AES256CFB           =  4003; 
+        AES256CTR           =  4004;
+        AES256OFB           =  4005;
+       
+    }
+    enum comtypeNo { 
+        /* 是否压缩 */
+        NO_COMPRESS         = 5000;    // 默认不压缩
+        COMPRESS_ZLIB       = 5001;    // zlib压缩
+        COMPRESS_GZIP       = 5002;    // gzip压缩	
+
+    }
+    /* 消息序列号 */
+    required uint64 serial_no = 1;
+    /* 消息版本号 */
+    optional uint32 version = 2 [default = 0x01000000];
+    /* 消息服务号 */
+    optional ServiceNo service_no = 3 [default = SESSION];
+    /* 消息发送时间 */
+    required uint64 time = 4;
+    /* 消息模式 */
+    optional Mode mode = 5    [default = REQUEST];
+    /* 消息编码 */
+    optional uint32 code = 6  [default = 0];
+    /* 消息描述 */
+    /*  在与分析引擎通信时需要使用该字段指名数据内容类型
+        SYSLOG      :指明content中的 日志字符串 为syslog日志字符串
+        SNMPTRAP    :指明content中的 日志字符串 为snmptrap日志字符串
+        WMI         :指明content中的 日志字符串 为wmi日志字符串
+        FILELOG     :指明content中的 日志字符串 为filelog日志字符串
+		SFTP        :指明content中的 日志字符串 为sftp日志字符串
+		
+        PING        :指明content中的 监控字符串 为ping监控字符串
+        SCANPORT  	:指明content中的 监控字符串 为scanport监控字符串		
+        INSPECTOR  	:指明content中的 监控字符串 为inspeator监控字符串
+        MONITOR  	:指明content中的 监控字符串 为monitor监控字符串       
+        CONTROLLER  :指明content中的 监控字符串 为controller监控字符串
+        SNMPCHECK	:指明content中的 监控字符串 为snmpcheck监控字符串
+        NMAPSCAN  	:指明content中的 业务字符串 为nmapscan监控字符串
+        INSPECURL 	:指明content中的 监控字符串 为inspecUrl监控字符串
+        WEAKPWD 	:指明content中的 监控字符串 为weakpwd监控字符串
+		
+        NETTOPO  	:指明content中的 业务字符串 为nettopo业务字符串
+        NETFLOW   	:指明content中的 业务字符串 为netflow业务字符串
+    */
+	/* 加密方式 */
+    optional enptypeNo enptype = 7  [default = NO_ENPTYPE];
+	/* 压缩方式 */
+    optional comtypeNo comtype = 8  [default = NO_COMPRESS];
+	
+    optional string desc = 9;
+    /* 消息内容(依赖于ServiceNo的值和插件的具体功能) */
+    /* ServiceNo    content  
+        100000     采集服务器IP~采集服务器名称~采集服务器通信端口~平台类型(1:linux 2:windows)
+        100001     采集服务器IP|采集器标识1~状态(0:停止 1:启动)|采集器标识2~状态(0:停止 1:启动)|采集器标识3~状态(0:停止 1:启动)...
+        100002     采集器标识|策略字符串（根据不同插件该内容不同）
+                        syslog策略字符串       :过滤设备IP1~过滤设备IP2~过滤设备IP3...
+                        snmptrap策略字符串     :过滤设备IP1~过滤设备IP2~过滤设备IP3...
+                        wmi策略字符串          :IP1~用户~密码~应用程序(1:采集)~安全(1:采集)~系统(1:采集)~采集频率|IP2~用户~密码~应用程序(1:采集)~安全(1:采集)~系统(1:采集)~采集频率...
+                        topu策略字符串         :交换机IP~团体名~版本号~安全等级~用户名~认证方式~认证密码~加密协议~加密密码~采集频率
+                        ping策略字符串         :设备IP1~设备IP2~设备IP3...
+                        scanport策略字符串     :设备IP~起始端口~终止端口
+                        inspector策略字符串    :任务数量|任务标识1~任务类型(1:一次性任务 2:重复性任务)|分~时~日~月~周(任务触发时间,默认字段则填 "*")|IP|请求参数串(BDSEC~用户名~密码~URL或者SNMP~ip~团体名~版本号~安全等级~用户名~认证方式~认证密码~加密协议~加密密码)|任务标识2~任务类型|...
+                        inspecURL策略字符串    :任务数量|任务标识1~任务类型(1:一次性任务 2:重复性任务)|分~时~日~月~周(任务触发时间,默认字段则填 "*")|URL数量|请求参数串(URL1~URL2~...)|任务标识2~任务类型|分~时~日~月~周|...
+                        filelog策略字符串      :日志目录1(绝对路径;目录名称:IP~AppNam)|日志目录2|日志目录3|日志目录4|...
+                        monitor策略字符串  	   :IP1~请求参数串(BDSEC~用户名~密码~URL或者SNMP~ip~团体名~版本号~安全等级~用户名~认证方式~认证密码~加密协议~加密密码或者DOCKER~容器ip~宿主ip~宿主机端口)|IP2~请求参数串(BDSEC~用户名~密码~URL)
+                        snmpcheck策略字符串    :任务数量~时间间隔(s)|IP1~请求参数串(核查标识(0000(对应表示network,install,process,device; 0:不核查 1:核查))~IP~团体名~版本号~安全等级~用户名~认证方式~认证密码~加密协议~加密密码)|IP2~请求参数串...
+                        weakpwd策略字符串      :设备IP1~设备IP2~设备IP3...
+                        nmapscan策略字符串     :设备IP1~设备IP2~设备IP3...
+                        netflow策略字符串      :源过滤设备IP1~设备IP2~设备IP3...|目的过滤IP1..|过滤协议（TCP，UDP，ICMP）
+                        docker策略字符串       :ip~端口~频率
+                        sftp策略字符串         :标识ID1~IP1~用户名~密码~COMMAND(1:get 2:put)~远程目录~本地目录~文件1(目录下全部文件, 则填"*")~文件2...|标识ID2~IP2~用户名~密码~COMMAND~远程目录~本地目录~文件...
+                        threatint策略字符串    :标识ID1~厂家(1.微步 2.IBM)~url1~请求方式(post, get)~请求参数(如:用户名=aaa&密码=bbb, 没有则填 "null")~header参数(如:用户名:aaa&密码:bbb, 没有则填 "null")|标识ID2~厂家~url2~请求方式~请求参数~header参数|...
+                        controller策略字符串   :标识ID~协议ID(1:SNMP 2:SSH 3:TELNET 4:BDSEC)~IP1~COMMAND~请求参数串(用户名~密码~URL~param)
+                                COMMAND:    1表示shutdown        请求参数串(用户名~密码~URL)
+                                            2表示reboot          请求参数串(用户名~密码~URL)
+                                            3表示restartservice  请求参数串(用户名~密码~URL~servicename)
+                                            4表示stopservice     请求参数串(用户名~密码~URL~servicename)
+                                            5表示syntime         请求参数串(用户名~密码~URL~ip)
+                                            6表示factoryrecover  请求参数串(用户名~密码~URL)
+
+        100003     采集器标识
+        100004     空
+        100005     空
+        100006     采集服务器IP|CPU使用率(整数)~内存使用率(整数)~上报日志数(整数)
+        100007     项目ID(1:心跳间隔 2:监控周期 3:加密压缩)|项目参数(周期(s):1或2时; 0/非0(加密1.aes-256-ecb 2. aes-256-cbc 3.aes-256-cfb 4.aes-256-ctr 5.aes-256-ofb)~0/非0(压缩1.zlib 2.gzip):3时)
+        200000     日志字符串（根据不同插件该内容不同）
+            syslog日志字符串：YYYY-MM-DD HH:MI:SS~设备IP~FACILITY~PRIORITY~应用名称~日志内容
+            snmptrap日志字符串：YYYY-MM-DD HH:MI:SS~设备IP~FACILITY~PRIORITY~应用名称~日志内容
+            wmi日志字符串: 同上
+            filelog日志字符串: 同上 
+			sftp日志字符串: 同上			
+                    
+        200001     监控字符串（根据不同插件该内容不同）
+                ping监控字符串       :IP~状态（1:不通 2:连通）~延时时间~错误类型~错误代码
+                scanport监控字符串   :IP~端口
+                snmp监控字符串       :(待定)
+                inspector监控字符串  :任务标识~IP~子任务类型(0:ping 1:cpu 2:memory 3:磁盘 4:服务状态)|子任务执行结果字符串 
+					子任务类型  子任务执行结果字符串
+                            0  状态（1:不通 2:连通）
+                            1  cpu使用率(整数)
+                            2  内存使用率(整数)
+                            3  磁盘名称1~磁盘使用率(整数)|磁盘名称2~磁盘使用率(整数)|...
+                            4  服务名称1~服务状态(running/stopped)|服务名称2~服务状态(running/stopped)|...							
+                inspecURL监控字符串  :任务标识~URL数量|URL1结果标识(0：能访问; 非0：不能访问)~响应时间(ms, 不能访问时,值为0)|URL2结果标识~响应时间...
+                monitor监控字符串    :IP~子任务类型(1:cpu 2:memory 3:磁盘 4:服务状态 )|子任务执行结果字符串
+					子任务类型  子任务执行结果字符串
+                            1  cpu使用率(整数)
+                            2  内存使用率(整数)
+                            3  磁盘名称1~磁盘使用率(整数)|磁盘名称2~磁盘使用率(整数)|...
+                            4  服务名称1~服务状态(running/stopped)|服务名称2~服务状态(running/stopped)|...
+                            5  网关名称1~网关mac地址~网关流量状态(up/down)~下行流量~上行流量|...
+                            6  安装服务名称1~类型(unknown/operatingSystem/deviceDriver/application)~具体信息|...
+                            7  操作系统名称(未知则填"null")~主机名称(未知则填"null")
+                snmpcheck监控字符串  :IP~子任务类型(1:网关流量信息 2:安装列表信息 3:服务状态信息 4:设备检测信息)|子任务执行结果字符串
+					子任务类型  子任务执行结果字符串
+                            1  网关名称1~网关mac地址~网关流量状态(up/down)~下行流量~上行流量~下行速率~上行速率|...
+                            2  安装服务名称1~类型(unknown/operatingSystem/deviceDriver/application)~安装时间|...
+                            3  服务名称1~程序路径~服务状态(running/stopped)|服务名称2~程序路径~服务状态(running/stopped)|...
+                            4  设备名称1~设备型号|设备名称2~设备型号|...
+                weakpwd监控字符串    :IP~弱密码数量|服务名称~软件用户名~用户密码|服务名称~软件用户名~用户密码|...
+                controller管控字符串 :标识ID~协议ID(1:SNMP 2:SSH 3:TELNET 4:BDSEC)~IP~COMMAND(1,2,...)~结果标识（0：成功    非0：不成功）
+                /* sftp管控字符串       :标识ID~IP~COMMAND(1,2)~结果标识（0：成功    非0：未能成功传输文件数） */
+                threatint管控字符串  :标识ID~厂家~请求结果标识(0：成功  1：失败)~返回数据(如果请求失败, 则填"null")
+                nmapscan策略字符串   :ip|port~protocol~state~service|port~protocol~state~service...
+                docker监控字符串     :ip|contain_id~image~state~cpu_count~mem_limit~cpu_percent~mem_percent~Command~NetworkMode~IPAddress~MAC~Created~StartdAt~FinishedAt|...
+        200002     业务字符串（根据不同插件该内容不同）
+                nettopo业务字符串    :类型（Dev:网元设备 TOPO:拓扑关系）|ID~值|...|end
+                netflow业务字符串    :netflow|AGENT_IP~值|SRCIP~值|DSTIP~值|NEXTHOP~值|ETH_IN~值|ETH_OUT~值|SRCIP_AREA~值|DSTIP_AREA~值|SRCIP_NETMASK~值|DSTIP_NETMASK~值|STARTTIME~值|ENDTIME~值|SRCPORT~值|DSTPORT~值|PROTO~值|PROTO7~值|PACKERNUM~值|BYTESIZE~值|FLOWNUM~值|RECORDTIME~值|FLAG~值（0.上行；1.下行；3.内网间；4.外网间）
+
+        200003     流量字符串
+        200004     netflow流量字符串		
+    */
+    optional bytes content = 10;
+    /* 扩展 */
+    extensions 11 to max;  
+}
+
+extend Message {
+    optional uint64 register_sn = 11;
+}
+
+
+/******************* 参数说明***********************************
+采集器名称  采集器标识     采集器标识
+SYSLOG       10010001       10020001
+FILELOG      10010002       10020002
+WMI          10010003       10020003
+SNMPTRAP     10010004          -
+SFTP         10010005		   -
+PING         11010001          -
+SCANPORT     11010002          -
+SNMP         11010003          -
+INSPECTOR    11010004          -
+MONITOR      11010005          -
+CONTROLLER   11010006		   -
+SNMPCHECK    11010007		   -
+NMAPSCAN     11010008          -
+BDSAR        11010009          -
+DOCKER       11010010          -
+THREATINT    11010012		   -
+INSPECURL    11010014          -
+WEAKPWD      11010015		   -
+NETTOP       12010001          -
+NETFLOW      12010002          -
+FLOW         13010002
+
+第1、2位含义：10：日志类 11：监控类 12：业务类 13：流量类
+第3、4位含义：01：linux  02：windows 
+***************************************************************/

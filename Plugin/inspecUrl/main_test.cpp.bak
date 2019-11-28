@@ -1,0 +1,46 @@
+#include <iostream>
+#include <cstdlib>
+#include <string>
+
+#include "inspecUrlMgr.h"
+
+using namespace std;
+
+bool Report_date(Poco::UInt32 dwModuleId, const PModIntfDataType pDataType, const void * pData, Poco::UInt32 dwLength)
+{
+    cout << "func Report_date begins..." << endl;
+	string report_data = *(string *)pData;
+    cout << "report_data: " << report_data << endl;
+
+    return true;
+}
+
+int main()
+{
+    CInspecUrlMgr inspecUrl("/root/SOC/soc5.0/conf/inspecUrl.cfg");
+	cout << "func main begins..." << endl;
+	
+	bool ret = true;
+	
+    ret = inspecUrl.Init();
+	if(!ret)
+		cout << "Init failed..." << endl;
+	
+	string Policy = "1|888888~1|*~*~*~*~*|2|https://172.16.2.144:441/cgi-bin/admin/bdsec_daemon~https://www.baidu.com"; //|172.16.12.9~network~172.16.12.9~public~161
+    ret = inspecUrl.SetData(NULL, (void *)&Policy, Policy.size());
+	if(!ret)
+		cout << "SetData failed..." << endl;
+	
+	inspecUrl.SetFetchData(NULL);
+    inspecUrl.SetReportData(Report_date);
+	
+    ret = inspecUrl.Start();
+	if(!ret)
+		cout << "Start failed..." << endl;
+
+	sleep(20);
+	
+	cout << "func main end..." << endl;
+
+    return 0;
+}

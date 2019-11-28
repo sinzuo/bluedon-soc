@@ -1,0 +1,102 @@
+
+
+###########################################################################
+#	COMMON Configuration
+###########################################################################
+EVERYTHING      = all clean
+CXX		= g++
+CXXFLAGS        = -O2 -g -m64 -Wall
+
+PLUGIN_SHARE_INCLUDE = Plugin/share
+SOC_SHARE_LDFLAGS = lib
+SOC_WEAK_LDFLAGS = /usr/local/socserver/toollib/weak
+SOC_WEAK_LIBS = -lweak
+
+###########################################################################
+#       ACE Configuration
+###########################################################################
+
+ACE_INCLUDE	= lib_third/ace/include
+ACE_LDFLAGS	= lib_third/ace/lib
+ACE_LIBS	= -lACE
+
+###########################################################################
+#       POCO Configuration
+###########################################################################
+
+POCO_INCLUDE     = lib_third/poco/include
+POCO_LDFLAGS     = lib_third/poco/lib
+POCO_LIBS        = -lPocoFoundation -lPocoUtil -lPocoXML -lPocoCrypto
+
+###########################################################################
+#       PROTOCOLBUF Configuration
+###########################################################################
+
+PBUF_INCLUDE     = lib_third/protobuf/include
+PBUF_LDFLAGS     = lib_third/protobuf/lib
+PBUF_LIBS        = -lprotobuf
+
+###########################################################################
+#       LOG4XX Configuration
+###########################################################################
+
+LOG4XX_INCLUDE   = lib_third/log4cxx/include
+LOG4XX_LDFLAGS   = lib_third/log4cxx/lib
+LOG4XX_LIBS      = -llog4cxx
+
+APR_INCLUDE      = lib_third/apr/include
+APR_LDFLAGS      = lib_third/apr/lib
+
+APR-UTIL_INCLUDE = lib_third/apr-util/include
+APR-UTIL_LDFLAGS = lib_third/apr-util/lib
+
+###########################################################################
+#       ZMQ Configuration
+###########################################################################
+
+ZMQ_INCLUDE      = lib_third/zmq/include
+ZMQ_LDFLAGS      = lib_third/zmq/lib
+ZMQ_LIBS         = -lzmq
+
+###########################################################################
+#       NETSNMP Configuration
+###########################################################################
+
+SNMP_INCLUDE     = lib_third/net-snmp/include
+SNMP_LDFLAGS     = lib_third/net-snmp/lib
+SNMP_LIBS        = -lnetsnmp
+
+###########################################################################
+#       CURL Configuration
+###########################################################################
+
+CURL_INCLUDE     = lib_third/curl/include
+CURL_LDFLAGS     = lib_third/curl/lib
+CURL_LIBS        = -lcurl
+
+###########################################################################
+#       JSON Configuration
+###########################################################################
+
+JSON_INCLUDE     = lib_third/json/include
+JSON_LDFLAGS     = lib_third/json/lib
+JSON_LIBS        = -ljson_linux-gcc-4.4.6_libmt
+
+###########################################################################
+#       GeoIP Configuration
+###########################################################################
+
+GEOIP_INCLUDE     = lib_third/GeoIP/include
+GEOIP_LDFLAGS     = lib_third/GeoIP/lib
+GEOIP_LIBS        = -lGeoIP
+
+###########################################################################
+#       SSH2 Configuration
+###########################################################################
+
+SSH2_INCLUDE     = lib_third/ssh2/include
+SSH2_LDFLAGS     = lib_third/ssh2/lib
+SSH2_LIBS        = -lssh2
+
+PTHREAD_LIBS        = -lpthread
+

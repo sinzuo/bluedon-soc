@@ -1,0 +1,55 @@
+WORK_DIR=/root/zhangjie/soc5.0/src
+CXX        =g++
+CXXFLAGs   =-g -O2 -Wall -fPIC
+DEFINES    = -DDEBUG -D_DEBUG
+PROGNAME   =bdping.so
+SRCs       =$(wildcard *.cpp  $(WORK_DIR)/utils/*.cpp $(WORK_DIR)/Plugin/share/icmp/*.cpp) 
+NODIR_SRCs =$(notdir $(SRCs))
+OBJs       =$(patsubst %.cpp, %.o, $(SRCs)) 
+NODIR_OBJs =$(patsubst %.cpp, %.o, $(NODIR_SRCs))
+INC        =-I. -I$(WORK_DIR) -I$(WORK_DIR)/Plugin/share -I/root/zhangjie/poco-1.7.3-all/Foundation/include/Poco -I/usr/local/ace/include -I/usr/local/log4cxx/include
+LIBS       =  
+LIBPATH    =-L. -L/root/zhangjie/poco-1.7.3-all/lib/Linux/x86_64 -L/usr/local/ace/lib   
+
+
+############################################################
+
+all: $(PROGNAME)
+
+$(PROGNAME): $(NODIR_OBJs)
+	$(CXX) $(CXXFLAGs) -shared -o $@ $(LIBS) $(LIBPATH) $^
+
+$(NODIR_OBJs): $(OBJs)
+
+$(OBJs): %.o: %.cpp 
+	@echo starting compile $<  ........
+	$(CXX) -Wall -fPIC -c $< $(INC)
+
+
+
+
+#$(OBJs): $(SRCs)
+#@echo starting compile $*.cpp  ........
+#$(COMPILER) -c $*.cpp -o $@ $(INC)
+
+
+
+############################################################
+
+info:
+	@echo $(CXX)
+	@echo $(CXXFLAGs)
+	@echo $(PROGNAME)
+	@echo $(INC)
+	@echo $(SRCs)
+	@echo $(OBJs)
+	@echo $(NODIR_OBJs)
+
+clean:
+	-@rm -fv $(NODIR_OBJs); 
+	-@mv -fv $(PROGNAME) $(PROGNAME)_bak
+
+
+install:
+	-@cp -fv $(PROGNAME) ../../../lib/
+
